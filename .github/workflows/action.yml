@@ -1,0 +1,53 @@
+name: Build and Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      codepot_tag:
+        description: 'Tag for codepot repository'
+        required: true
+        default: '0.0.1'
+      branch:
+        description: 'Branch to use'
+        required: true
+        default: 'main'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  setup-repos:
+    runs-on: ubuntu-latest
+    outputs:
+      codepot_path: ${{ steps.setup.outputs.codepot_path }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Checkout codepot repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Build Binary
+        run: |
+          cargo build --release
+          pwd
+          ls -alF
+
+      - name: Google Drive에 apk 파일 업로드
+        uses: willo32/google-drive-upload-action@v1
+        with:
+          credentials: ${{ secrets.TEST_ENCODED_JSON }}
+          target: ${{ github.workspace }}/target/release/example
+          parent_folder_id: 19vVka2c7fCLugsjjY3g9go1aBZU2pqy1
+          name: example
+
+      - name: Set output for codepot directory
+        id: setup
+        run: |
+          echo "codepot_path=$GITHUB_WORKSPACE" >> $GITHUB_OUTPUT
+          echo "$GITHUB_OUTPUT"
